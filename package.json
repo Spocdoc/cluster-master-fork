@@ -2,14 +2,19 @@
   "author": "Isaac Z. Schlueter <i@izs.me> (http://blog.izs.me/)",
   "name": "cluster-master",
   "description": "A helper script for managing a cluster of node worker servers",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "repository": {
     "type": "git",
     "url": "git://github.com/isaacs/cluster-master.git"
   },
-  "main": "cluster-master.js",
+  "main": "index",
   "engines": {
     "node": ">=0.7.7"
   },
-  "license": "BSD"
+  "license": "BSD",
+  "private": true,
+  "dependencies": {
+    "lodash-fork": "0.x",
+    "debug-fork": "0.x"
+  }
 }

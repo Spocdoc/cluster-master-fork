@@ -39,7 +39,7 @@ module.exports = class ClusterMaster
 
     out.exec = path.resolve config.exec
     @config = out
-    
+
   setupCluster: ->
     cluster.setupMaster @config
     throw new Error("This cluster already has a cluster-master instance running")  if cluster._clusterMaster
@@ -56,9 +56,9 @@ module.exports = class ClusterMaster
       disconnectTimer = undefined
 
       worker.on 'exit', =>
-        clearTimeout disconnectTimer
+        clearTimeout timeout if timeout = worker.disconnectTimer
 
-        if worker.suicide # an invoked exit
+        if worker.suicide or timeout # an invoked exit -- worker could have received SIGTERM and closed normally
           debug "Worker #{id} (#{pid}) exited."
         else
           debug "Worker #{id} (#{pid}) exited abnormally"
@@ -68,29 +68,26 @@ module.exports = class ClusterMaster
             @danger = true
             setTimeout (=> @resize()), 2000
 
-        if Object.keys(cluster.workers).length < @config.size && !@resizing
+        if !@danger and Object.keys(cluster.workers).length < @config.size and !@resizing
           @resize()
 
         return
 
-      # when stopped by this process...
-      worker.on 'disconnect', =>
-        debug "Worker #{id} (#{pid}) disconnected"
-
-        if (p = worker.process) and p.state isnt 'dead'
-          debug "Worker #{id} (#{pid}) sending SIGTERM"
-          p.kill "SIGTERM"
-          disconnectTimer = setTimeout (=>
-            debug "Worker #{id} (#{pid}) took too long to exit. Sending SIGKILL..."
-            p.kill "SIGKILL"
-          ), @config.maxTermMillis
-
-        return
-
   stopWorker: (worker, cb) ->
-    return cb?() if !worker or worker.state is 'dead'
+    if worker.disconnectTimer or !worker or worker.state is 'dead' or !(p = worker.process)
+      debug "Stop worker #{worker.id} -- already dead or being killed"
+      return cb?()
+
+    debug "Worker #{worker.id} (#{worker.pid}) sending SIGTERM"
+
     worker.once 'exit', cb if cb
-    worker.disconnect() if worker.process.connected
+    worker.process.kill "SIGTERM"
+
+    worker.disconnectTimer = setTimeout (=>
+      debug "Worker #{worker.id} (#{worker.pid}) took too long to exit. Sending SIGKILL..."
+      p.kill "SIGKILL"
+    ), @config.maxTermMillis
+
     return
 
   resize: (size=@config.size, cb) ->
@@ -157,7 +154,11 @@ module.exports = class ClusterMaster
         process.exit 0
       return
 
-    @stopWorker worker, workerStopped for id, worker of cluster.workers
+    if count
+      @stopWorker worker, workerStopped for id, worker of cluster.workers
+    else
+      ++count
+      workerStopped()
     return
 
   doRestart: ->

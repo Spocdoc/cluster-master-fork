@@ -199,7 +199,7 @@ module.exports = class ClusterMaster
         cluster.fork @config.env
         debug "Restart: forking next"
       @restarting = false
-      return cb()
+      return cb?()
 
     return
 

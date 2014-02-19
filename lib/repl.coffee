@@ -60,8 +60,9 @@ class Worker
 
 
 module.exports = class Repl
-  constructor: (@clusterMaster, address) ->
-    @address = new Address address
+  constructor: (@clusterMaster, config) ->
+    @address = new Address config.address or config
+    @commands = config.commands
 
   start: ->
     return unless @address
@@ -97,7 +98,7 @@ module.exports = class Repl
     context.__defineGetter__ 'ages', => select 'age'
     context.__defineGetter__ 'states', => select 'state'
 
-    @server = server = net.createServer (sock) ->
+    @server = server = net.createServer (sock) =>
       ++connections
       sock.id = ++sockId
       sockEnded = replEnded = false
@@ -112,6 +113,7 @@ module.exports = class Repl
         ignoreUndefined: true
 
       _.extendProps r.context, context
+      _.extendProps r.context, commands if commands = @commands?(r, @clusterMaster)
 
       r.on 'end', ->
         --connections

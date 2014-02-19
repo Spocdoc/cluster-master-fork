@@ -73,6 +73,9 @@ module.exports = class ClusterMaster
 
         return
 
+  debug: debug
+  debugError: debugError
+
   stopWorker: (worker, cb) ->
     if worker.disconnectTimer or !worker or worker.state is 'dead' or !(p = worker.process)
       debug "Stop worker #{worker.id} -- already dead or being killed"
@@ -161,7 +164,7 @@ module.exports = class ClusterMaster
       workerStopped()
     return
 
-  doRestart: ->
+  _doRestart: (cb) ->
     return unless size = (workerIds = Object.keys(cluster.workers)).length
 
     # verify the first one starts and runs for a while, then continue with next()
@@ -170,6 +173,7 @@ module.exports = class ClusterMaster
         debugError "Restart: new worker exited too quickly, so aborting restart"
         clearTimeout timer
         @restarting = false
+        cb? "Restart failed"
         return
 
       newWorker.on 'exit', earlyExit
@@ -195,19 +199,21 @@ module.exports = class ClusterMaster
         cluster.fork @config.env
         debug "Restart: forking next"
       @restarting = false
-      return
+      return cb()
 
     return
 
 
-  restart: ->
+  # passes an error if the restart fails, else no arguments
+  restart: (cb) ->
     if @restarting
       debug "Already restarting"
-      return
+      return cb? "EALREADY"
 
     @restarting = true
 
     if @config.size isnt Object.keys(cluster.workers).length
-      @resize @config.size, (=> @doRestart())
+      @resize @config.size, (=> @_doRestart cb)
     else
-      @doRestart()
+      @_doRestart cb
+

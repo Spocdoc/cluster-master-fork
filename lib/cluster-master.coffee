@@ -127,7 +127,7 @@ module.exports = class ClusterMaster
       --delta
 
     while delta < 0
-      worker = workerIds[-delta]
+      worker = cluster.workers[workerIds[-delta]]
       debug "Resize stopping worker #{worker.id}"
       worker.once 'exit', didAsync
       @stopWorker worker

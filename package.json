@@ -1,8 +1,8 @@
 {
   "author": "Isaac Z. Schlueter <i@izs.me> (http://blog.izs.me/)",
-  "name": "cluster-master",
+  "name": "cluster-master-fork",
   "description": "A helper script for managing a cluster of node worker servers",
-  "version": "0.2.2",
+  "version": "0.2.4",
   "repository": {
     "type": "git",
     "url": "git://github.com/isaacs/cluster-master.git"
